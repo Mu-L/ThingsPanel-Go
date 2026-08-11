@@ -186,8 +186,15 @@ func (e *LuaExecutor) setupSandbox(L *lua.LState) {
 	// PreloadModule 需要访问 package.preload 表
 	L.PreloadModule("json", luajson.Loader)
 
+	// 兼容旧脚本中的 os.time()，但不开放 os.execute、os.remove 等危险能力。
+	originalOS := L.GetGlobal("os")
+	safeOS := L.NewTable()
+	if osTable, ok := originalOS.(*lua.LTable); ok {
+		safeOS.RawSetString("time", osTable.RawGetString("time"))
+	}
+
 	// 禁用危险的标准库
-	L.SetGlobal("os", lua.LNil)           // 禁用 os 库（操作系统操作）
+	L.SetGlobal("os", safeOS)             // 仅保留安全且向后兼容的 os.time
 	L.SetGlobal("io", lua.LNil)           // 禁用 io 库（文件 IO）
 	L.SetGlobal("dofile", lua.LNil)       // 禁用 dofile
 	L.SetGlobal("loadfile", lua.LNil)     // 禁用 loadfile
