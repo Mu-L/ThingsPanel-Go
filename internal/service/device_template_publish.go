@@ -50,6 +50,12 @@ func (*DeviceTemplate) PublishToMarket(req model.PublishToMarketReq, claims *uti
 			"error": fmt.Sprintf("failed to find device config: %s", err.Error()),
 		})
 	}
+	// 发布时不能依赖可能过期的 Redis 配置缓存，否则 image_url 更新后仍会被读成空值。
+	if dc.ImageURL == nil || strings.TrimSpace(ptrStr(dc.ImageURL)) == "" {
+		if freshConfig, queryErr := query.DeviceConfig.Where(query.DeviceConfig.ID.Eq(req.DeviceConfigID)).First(); queryErr == nil {
+			dc.ImageURL = freshConfig.ImageURL
+		}
+	}
 
 	// 2. Get the DeviceTemplate (via device_template_id)
 	if dc.DeviceTemplateID == nil || *dc.DeviceTemplateID == "" {
