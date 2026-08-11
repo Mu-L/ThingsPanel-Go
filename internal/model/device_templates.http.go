@@ -91,8 +91,10 @@ type MarketLoginReq struct {
 
 // MarketLoginRsp 市场登录响应
 type MarketLoginRsp struct {
-	Token     string `json:"token"`
-	ExpiresAt int64  `json:"expires_at"` // 视市场服务返回而定
+	Token        string `json:"token"`
+	RefreshToken string `json:"refresh_token,omitempty"`
+	ExpiresIn    int64  `json:"expires_in,omitempty"`
+	ExpiresAt    int64  `json:"expires_at,omitempty"`
 }
 
 // PublishToMarketReq 发布到市场请求 (本地接口接收)

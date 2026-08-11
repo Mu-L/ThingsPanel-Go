@@ -302,15 +302,25 @@ func (*DeviceApi) MarketLogin(c *gin.Context) {
 	}
 
 	client := service.NewMarketClient()
-	token, err := client.Login(c, req.Username, req.Password)
+	loginRsp, err := client.Login(c, req.Username, req.Password)
 	if err != nil {
 		c.Error(errcode.NewWithMessage(errcode.CodeSystemError, err.Error()))
 		return
 	}
 
-	c.Set("data", map[string]string{
-		"token": token,
-	})
+	c.Set("data", loginRsp)
+}
+
+// MarketRefresh refreshes an expired market access token.
+// @Router   /api/v1/device/template/market/refresh [post]
+func (*DeviceApi) MarketRefresh(c *gin.Context) {
+	var req struct {
+		RefreshToken string `json:"refresh_token" binding:"required"`
+	}
+	if !BindAndValidate(c, &req) { return }
+	loginRsp, err := service.NewMarketClient().Refresh(c, req.RefreshToken)
+	if err != nil { c.Error(errcode.NewWithMessage(errcode.CodeSystemError, err.Error())); return }
+	c.Set("data", loginRsp)
 }
 
 // PublishToMarket 发布模板到市场

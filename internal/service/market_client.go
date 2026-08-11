@@ -199,32 +199,33 @@ func isUserNotFoundResponse(statusCode int, bodyBytes []byte) bool {
 }
 
 // Login authenticates with the market service to get an access token.
-func (c *MarketClient) Login(ctx context.Context, username, password string) (string, error) {
-	reqBody := map[string]string{
+func (c *MarketClient) Login(ctx context.Context, username, password string) (*model.MarketLoginRsp, error) {
+	reqBody := map[string]interface{}{
 		"username": username,
 		"password": password,
+		"remember": true,
 	}
 	reqBytes, err := json.Marshal(reqBody)
 	if err != nil {
-		return "", fmt.Errorf("failed to marshal login body: %w", err)
+		return nil, fmt.Errorf("failed to marshal login body: %w", err)
 	}
 
 	url := fmt.Sprintf("%s/api/account/auth/login", c.baseURL)
 	httpReq, err := http.NewRequestWithContext(ctx, "POST", url, bytes.NewReader(reqBytes))
 	if err != nil {
-		return "", fmt.Errorf("failed to create login request: %w", err)
+		return nil, fmt.Errorf("failed to create login request: %w", err)
 	}
 	httpReq.Header.Set("Content-Type", "application/json")
 
 	resp, err := c.httpClient.Do(httpReq)
 	if err != nil {
-		return "", fmt.Errorf("login request failed: %w", err)
+		return nil, fmt.Errorf("login request failed: %w", err)
 	}
 	defer resp.Body.Close()
 
 	bodyBytes, err := io.ReadAll(resp.Body)
 	if err != nil {
-		return "", fmt.Errorf("failed to read login response: %w", err)
+		return nil, fmt.Errorf("failed to read login response: %w", err)
 	}
 
 	if resp.StatusCode != http.StatusOK {
@@ -234,20 +235,39 @@ func (c *MarketClient) Login(ctx context.Context, username, password string) (st
 		}
 		json.Unmarshal(bodyBytes, &errResp)
 		if errResp.Message != "" {
-			return "", fmt.Errorf("%s", errResp.Message)
+			return nil, fmt.Errorf("%s", errResp.Message)
 		}
 		if errResp.Error != "" {
-			return "", fmt.Errorf("%s", errResp.Error)
+			return nil, fmt.Errorf("%s", errResp.Error)
 		}
-		return "", fmt.Errorf("login failed with status: %d", resp.StatusCode)
+		return nil, fmt.Errorf("login failed with status: %d", resp.StatusCode)
 	}
 
 	var loginResp model.MarketLoginRsp
 	if err := json.Unmarshal(bodyBytes, &loginResp); err != nil {
-		return "", fmt.Errorf("failed to parse login response: %w", err)
+		return nil, fmt.Errorf("failed to parse login response: %w", err)
 	}
 
-	return loginResp.Token, nil
+	return &loginResp, nil
+}
+
+// Refresh exchanges a market refresh token for a new access token.
+func (c *MarketClient) Refresh(ctx context.Context, refreshToken string) (*model.MarketLoginRsp, error) {
+	reqBytes, err := json.Marshal(map[string]string{"refresh_token": refreshToken})
+	if err != nil { return nil, fmt.Errorf("failed to marshal refresh body: %w", err) }
+	url := fmt.Sprintf("%s/api/account/auth/refresh", c.baseURL)
+	httpReq, err := http.NewRequestWithContext(ctx, "POST", url, bytes.NewReader(reqBytes))
+	if err != nil { return nil, fmt.Errorf("failed to create refresh request: %w", err) }
+	httpReq.Header.Set("Content-Type", "application/json")
+	resp, err := c.httpClient.Do(httpReq)
+	if err != nil { return nil, fmt.Errorf("refresh request failed: %w", err) }
+	defer resp.Body.Close()
+	bodyBytes, err := io.ReadAll(resp.Body)
+	if err != nil { return nil, fmt.Errorf("failed to read refresh response: %w", err) }
+	if resp.StatusCode != http.StatusOK { return nil, fmt.Errorf("market refresh failed with status: %d", resp.StatusCode) }
+	var result model.MarketLoginRsp
+	if err := json.Unmarshal(bodyBytes, &result); err != nil { return nil, fmt.Errorf("failed to parse refresh response: %w", err) }
+	return &result, nil
 }
 
 // PublishTemplate publishes a template to the market.

@@ -142,6 +142,7 @@ func (*Device) InitDevice(Router *gin.RouterGroup) {
 		{
 			// 市场登录
 			deviceTemplateMarketApi.POST("/login", api.Controllers.DeviceApi.MarketLogin)
+			deviceTemplateMarketApi.POST("/refresh", api.Controllers.DeviceApi.MarketRefresh)
 			// 发布模板到市场
 			deviceTemplateMarketApi.POST("/publish", api.Controllers.DeviceApi.PublishToMarket)
 			// 市场模板列表
