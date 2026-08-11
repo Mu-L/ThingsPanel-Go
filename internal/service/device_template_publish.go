@@ -141,10 +141,16 @@ func (*DeviceTemplate) PublishToMarket(req model.PublishToMarketReq, claims *uti
 		description = ptrStr(tpl.Description)
 	}
 	coverURL := strings.TrimSpace(req.CoverURL)
+	if coverURL == "" && dc.ImageURL != nil {
+		coverURL = strings.TrimSpace(*dc.ImageURL)
+	}
 	if coverURL == "" && publicOrigin != "" {
 		if path := strings.TrimSpace(ptrStr(tpl.Path)); path != "" {
 			coverURL = strings.TrimRight(publicOrigin, "/") + "/" + strings.TrimPrefix(path, "./")
 		}
+	}
+	if coverURL != "" && publicOrigin != "" && !strings.HasPrefix(coverURL, "http://") && !strings.HasPrefix(coverURL, "https://") {
+		coverURL = strings.TrimRight(publicOrigin, "/") + "/" + strings.TrimPrefix(coverURL, "./")
 	}
 
 	// 7. Extract plugin dependencies from DeviceConfig.protocol_type
