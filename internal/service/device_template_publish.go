@@ -158,6 +158,7 @@ func (*DeviceTemplate) PublishToMarket(req model.PublishToMarketReq, claims *uti
 	if coverURL != "" && publicOrigin != "" && !strings.HasPrefix(coverURL, "http://") && !strings.HasPrefix(coverURL, "https://") {
 		coverURL = strings.TrimRight(publicOrigin, "/") + "/" + strings.TrimPrefix(coverURL, "./")
 	}
+	deviceConfig.ImageURL = coverURL
 
 	// 7. Extract plugin dependencies from DeviceConfig.protocol_type
 	pluginDeps := getPluginDependenciesFromProtocol(dc)
@@ -176,6 +177,8 @@ func (*DeviceTemplate) PublishToMarket(req model.PublishToMarketReq, claims *uti
 		TemplateDefinition: map[string]interface{}{
 			"web_chart_config": tplDef["web_chart_config"],
 			"app_chart_config": tplDef["app_chart_config"],
+			"cover_url":        coverURL,
+			"template_path":    ptrStr(tpl.Path),
 			"telemetry":        deviceModel["telemetry"],
 			"attributes":       deviceModel["attributes"],
 			"commands":         deviceModel["commands"],

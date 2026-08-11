@@ -123,6 +123,7 @@ type DeviceConfigPayload struct {
 	OtherConfig    map[string]interface{} `json:"other_config"`
 	AdditionalInfo map[string]interface{} `json:"additional_info"`
 	AutoRegister   int16                  `json:"auto_register"`
+	ImageURL       string                 `json:"image_url,omitempty"`
 }
 
 // PublishTemplateReq 发布模板到市场的业务契约对象（发送给 market-service）
