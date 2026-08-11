@@ -98,6 +98,7 @@ type MarketLoginRsp struct {
 // PublishToMarketReq 发布到市场请求 (本地接口接收)
 // 发布单位是 device_config，包含凭证协议配置和它引用的 device_template（物模型+面板）
 type PublishToMarketReq struct {
+	CoverURL       string `json:"cover_url"`
 	DeviceConfigID string `json:"device_config_id" validate:"required,max=36"` // 设备配置ID（主键）
 	MarketToken    string `json:"market_token" validate:"required"`            // 用户在市场的登录 token
 	MarketName     string `json:"market_name"`                                 // 市场展示名称
@@ -124,6 +125,7 @@ type DeviceConfigPayload struct {
 
 // PublishTemplateReq 发布模板到市场的业务契约对象（发送给 market-service）
 type PublishTemplateReq struct {
+	CoverURL           string                 `json:"cover_url,omitempty"`
 	Name               string                 `json:"name"`
 	Brand              string                 `json:"brand"`
 	Model              string                 `json:"model"`

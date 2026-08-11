@@ -321,9 +321,14 @@ func (*DeviceApi) PublishToMarket(c *gin.Context) {
 		return
 	}
 	userClaims := c.MustGet("claims").(*utils.UserClaims)
+	publicOrigin, err := requestPublicOrigin(c)
+	if err != nil {
+		c.Error(errcode.WithData(errcode.CodeSystemError, err.Error()))
+		return
+	}
 
 	// 调用服务层
-	apiResp, err := service.GroupApp.DeviceTemplate.PublishToMarket(req, userClaims)
+	apiResp, err := service.GroupApp.DeviceTemplate.PublishToMarket(req, userClaims, publicOrigin)
 	if err != nil {
 		c.Error(err)
 		return

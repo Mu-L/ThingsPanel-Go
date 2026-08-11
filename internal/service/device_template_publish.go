@@ -4,6 +4,7 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
+	"strings"
 
 	"project/internal/dal"
 	"project/internal/model"
@@ -41,7 +42,7 @@ func parseJSON(data string) map[string]interface{} {
 }
 
 // PublishToMarket 以 device_config_id 为入口，发布 DeviceConfig（凭证协议）和 DeviceTemplate（物模型+面板）到市场
-func (*DeviceTemplate) PublishToMarket(req model.PublishToMarketReq, claims *utils.UserClaims) (*model.MarketPublishApiResponse, error) {
+func (*DeviceTemplate) PublishToMarket(req model.PublishToMarketReq, claims *utils.UserClaims, publicOrigin string) (*model.MarketPublishApiResponse, error) {
 	// 1. Get the DeviceConfig
 	dc, err := dal.GetDeviceConfigByID(req.DeviceConfigID)
 	if err != nil {
@@ -139,6 +140,12 @@ func (*DeviceTemplate) PublishToMarket(req model.PublishToMarketReq, claims *uti
 	if description == "" {
 		description = ptrStr(tpl.Description)
 	}
+	coverURL := strings.TrimSpace(req.CoverURL)
+	if coverURL == "" && publicOrigin != "" {
+		if path := strings.TrimSpace(ptrStr(tpl.Path)); path != "" {
+			coverURL = strings.TrimRight(publicOrigin, "/") + "/" + strings.TrimPrefix(path, "./")
+		}
+	}
 
 	// 7. Extract plugin dependencies from DeviceConfig.protocol_type
 	pluginDeps := getPluginDependenciesFromProtocol(dc)
@@ -152,6 +159,7 @@ func (*DeviceTemplate) PublishToMarket(req model.PublishToMarketReq, claims *uti
 		Author:             author,
 		Version:            version,
 		Description:        description,
+		CoverURL:           coverURL,
 		DeviceConfig:       deviceConfig,
 		TemplateDefinition: map[string]interface{}{
 			"web_chart_config": tplDef["web_chart_config"],
