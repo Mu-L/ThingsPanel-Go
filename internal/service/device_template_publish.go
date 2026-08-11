@@ -23,14 +23,6 @@ func ptrStr(s *string) string {
 	return *s
 }
 
-// ptrInt16 safely dereferences a *int16, returning 0 if nil.
-func ptrInt16(i *int16) int16 {
-	if i == nil {
-		return 0
-	}
-	return *i
-}
-
 // parseJSON parses a JSON string into a map, returning nil on error.
 func parseJSON(data string) map[string]interface{} {
 	if data == "" {
@@ -42,7 +34,7 @@ func parseJSON(data string) map[string]interface{} {
 }
 
 // PublishToMarket 以 device_config_id 为入口，发布 DeviceConfig（凭证协议）和 DeviceTemplate（物模型+面板）到市场
-func (*DeviceTemplate) PublishToMarket(req model.PublishToMarketReq, claims *utils.UserClaims, publicOrigin string) (*model.MarketPublishApiResponse, error) {
+func (*DeviceTemplate) PublishToMarket(req model.PublishToMarketReq, _ *utils.UserClaims, publicOrigin string) (*model.MarketPublishApiResponse, error) {
 	// 1. Get the DeviceConfig
 	dc, err := dal.GetDeviceConfigByID(req.DeviceConfigID)
 	if err != nil {
