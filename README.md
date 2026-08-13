@@ -53,27 +53,27 @@ Account: test@test.cn
 Password: 123456
 
 ## Quick Installation
-Containerized deployment is the fastest way to set up ThingsPanel.
+Install ThingsPanel from the [all-in-one installer page](https://install.thingspanel.io/). The installer checks the environment, deploys ThingsPanel, and starts the services automatically.
 
-1. Clone the docker-compose source:
+### Linux / macOS
 
-    ```bash
-    git clone https://github.com/ThingsPanel/thingspanel-docker.git
-    ```
+```bash
+curl -fsSL https://install.thingspanel.io/install.sh | sh
+```
 
-2. Enter the directory and start the service:
+### Windows
 
-    ```bash
-    cd thingspanel-docker
-    docker-compose -f docker-compose.yml up
-    ```
+Run the following command in PowerShell:
 
-3. Login:
-    ```text
-    URL: http://server-ip:8080
-    Account: super@super.cn
-    Password: 123456
-    ```
+```powershell
+irm https://install.thingspanel.io/install.ps1 | iex
+```
+
+Windows and macOS users can also download a graphical installer from the [ThingsPanel installer page](https://install.thingspanel.io/).
+
+After installation, open `http://server-ip:8080` (or `http://localhost:8080` for a local installation) and initialize the super administrator account before signing in.
+
+For system requirements, alternative installation methods, and troubleshooting, see the [ThingsPanel Quick Start guide](https://docs.thingspanel.cn/zh-Hans/docs/quick_start).
 
 ## Applications
 - Unified device management

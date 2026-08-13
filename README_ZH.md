@@ -52,25 +52,28 @@ ThingsPanel的插件主要有如下几类，分别是：
 密码：123456
 
 ## 快速安装使用
-通过容器化部署是搭建ThingsPanel的最快方式。
+请通过 [ThingsPanel 一键安装页面](https://install.thingspanel.io/) 安装，安装程序会自动完成环境检查、部署并启动服务。
 
-1. 获取docker-compose源码
-   
-    ```bash
-    git clone https://github.com/ThingsPanel/thingspanel-docker.git
-    ```
-1. 进入目录并启动服务
+### Linux / macOS
 
-    ```bash
-    cd thingspanel-docker
-    docker-compose -f docker-compose.yml up
-    ```
-1. 登录
-    ```text
-    输入网址:服务器ip:8080
-    输入账户:super@super.cn
-    输入密码:123456
-    ```
+```bash
+curl -fsSL https://install.thingspanel.io/install.sh | sh
+```
+
+### Windows
+
+在 PowerShell 中运行：
+
+```powershell
+irm https://install.thingspanel.io/install.ps1 | iex
+```
+
+Windows 和 macOS 用户也可以前往 [ThingsPanel 一键安装页面](https://install.thingspanel.io/) 下载图形化安装包。
+
+安装完成后，访问 `http://服务器IP:8080`（本机安装可访问 `http://localhost:8080`），初始化超管登录。
+
+更多环境要求、安装方式和常见问题，请参阅 [ThingsPanel 快速开始文档](https://docs.thingspanel.cn/zh-Hans/docs/quick_start)。
+
 ## 产品用途
 - 设备统一管理
 - 物联网中台
