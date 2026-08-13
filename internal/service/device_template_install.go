@@ -312,27 +312,20 @@ func (*DeviceTemplate) InstallFromMarket(req model.InstallFromMarketReq, claims 
 		})
 	}
 
-	// 4. Notify market service of installation (async, non-blocking)
-	marketUserID, err := client.ExtractUserIDFromMarketToken(req.MarketToken)
-	if err != nil {
-		logrus.Warnf("Could not extract market user_id from token, install notification may fail: %v", err)
-		marketUserID = ""
-	}
-	if marketUserID == "" {
-		marketUserID = claims.ID
-	}
+	// 4. Report successful local use to the resource center (async, non-blocking).
+	// dcID is stable and acts as the idempotency key for this real local import.
 	versionID := ""
 	if fullData.VersionID != "" {
 		versionID = fullData.VersionID
 	}
-	logrus.Infof("Notifying market of installation: TemplateID=%s, VersionID=%s, MarketUserID=%s, OrgID=%s",
-		req.MarketTemplateID, versionID, marketUserID, claims.TenantID)
+	logrus.Infof("Reporting successful market template use: TemplateID=%s, VersionID=%s, EventID=%s",
+		req.MarketTemplateID, versionID, dcID)
 	go func() {
-		err := client.InstallTemplate(context.Background(), req.MarketToken, req.MarketTemplateID, versionID, marketUserID, claims.TenantID)
+		err := client.ReportTemplateUsage(context.Background(), req.MarketToken, req.MarketTemplateID, versionID, dcID)
 		if err != nil {
-			logrus.Errorf("Failed to notify market service of installation: %v", err)
+			logrus.Errorf("Failed to report market template usage: %v", err)
 		} else {
-			logrus.Infof("Successfully notified market service of installation for template %s", req.MarketTemplateID)
+			logrus.Infof("Successfully reported market template usage for template %s", req.MarketTemplateID)
 		}
 	}()
 

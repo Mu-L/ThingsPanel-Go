@@ -16,7 +16,6 @@ import (
 
 	"project/internal/model"
 
-	"github.com/golang-jwt/jwt"
 	"github.com/spf13/viper"
 )
 
@@ -580,27 +579,6 @@ func (c *MarketClient) DownloadTemplate(ctx context.Context, token string, marke
 	return &result.Data, nil
 }
 
-// ExtractUserIDFromMarketToken parses the market (Keycloak) JWT and returns the subject (user_id).
-// The market credit account is keyed by this ID, not by the IoT platform's user ID.
-func (c *MarketClient) ExtractUserIDFromMarketToken(tokenString string) (string, error) {
-	if tokenString == "" {
-		return "", fmt.Errorf("empty token")
-	}
-	token, _, err := new(jwt.Parser).ParseUnverified(tokenString, jwt.MapClaims{})
-	if err != nil || token == nil {
-		return "", fmt.Errorf("parse market token: %w", err)
-	}
-	claims, ok := token.Claims.(jwt.MapClaims)
-	if !ok {
-		return "", fmt.Errorf("invalid token claims")
-	}
-	sub, _ := claims["sub"].(string)
-	if sub == "" {
-		return "", fmt.Errorf("token missing sub claim")
-	}
-	return sub, nil
-}
-
 // PublishBundle publishes a bundle to the Horizon market.
 func (c *MarketClient) PublishBundle(ctx context.Context, token string, idempotencyKey string, req *model.HorizonPublishRequest) (*model.HorizonPublishResponse, error) {
 	reqBytes, err := json.Marshal(req)
@@ -642,15 +620,15 @@ func (c *MarketClient) PublishBundle(ctx context.Context, token string, idempote
 	return &apiResp, nil
 }
 
-// InstallTemplate notifies the market service that a template has been installed.
-func (c *MarketClient) InstallTemplate(ctx context.Context, token string, marketTemplateID string, versionID string, userID string, orgID string) error {
-	url := fmt.Sprintf("%s/api/market/templates/%s/install", c.baseURL, marketTemplateID)
+// ReportTemplateUsage reports a successful local import. Market identity is
+// derived exclusively from the verified resource-center access token.
+func (c *MarketClient) ReportTemplateUsage(ctx context.Context, token, marketTemplateID, versionID, eventID string) error {
+	url := fmt.Sprintf("%s/api/market/templates/%s/usage-events", c.baseURL, marketTemplateID)
 	reqBody := map[string]string{
 		"version_id": versionID,
+		"event_id":   eventID,
 	}
 	reqBytes, _ := json.Marshal(reqBody)
-
-	fmt.Printf("[MarketClient] InstallTemplate: URL=%s, MarketTemplateID=%s, VersionID=%s, UserID=%s, OrgID=%s\n", url, marketTemplateID, versionID, userID, orgID)
 
 	httpReq, err := http.NewRequestWithContext(ctx, "POST", url, bytes.NewReader(reqBytes))
 	if err != nil {
@@ -658,12 +636,6 @@ func (c *MarketClient) InstallTemplate(ctx context.Context, token string, market
 	}
 	httpReq.Header.Set("Content-Type", "application/json")
 	httpReq.Header.Set("Authorization", "Bearer "+token)
-	if userID != "" {
-		httpReq.Header.Set("X-User-Id", userID)
-		httpReq.Header.Set("X-Org-Id", orgID)
-		// For market installations, we permit the installer to act as an org_admin locally
-		httpReq.Header.Set("X-Roles", "org_admin,super_admin")
-	}
 
 	resp, err := c.httpClient.Do(httpReq)
 	if err != nil {
@@ -673,7 +645,7 @@ func (c *MarketClient) InstallTemplate(ctx context.Context, token string, market
 
 	if resp.StatusCode != http.StatusCreated && resp.StatusCode != http.StatusOK {
 		body, _ := io.ReadAll(resp.Body)
-		return fmt.Errorf("install notification failed with status %d: %s", resp.StatusCode, string(body))
+		return fmt.Errorf("template usage report failed with status %d: %s", resp.StatusCode, string(body))
 	}
 
 	return nil
