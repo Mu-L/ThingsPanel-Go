@@ -3,6 +3,7 @@ package service
 import (
 	"context"
 	"encoding/json"
+	"strings"
 	"time"
 
 	"project/internal/dal"
@@ -259,6 +260,7 @@ func (*DeviceTemplate) InstallFromMarket(req model.InstallFromMarketReq, claims 
 		DeviceTemplateID: &templateID, // 引用新创建的 DeviceTemplate
 		DeviceType:       "1",        // 默认直连设备
 		TenantID:         claims.TenantID,
+		ImageURL:         resolveMarketTemplateImageURL(fullData),
 		CreatedAt:        now,
 		UpdatedAt:        now,
 	}
@@ -339,6 +341,24 @@ func (*DeviceTemplate) InstallFromMarket(req model.InstallFromMarketReq, claims 
 		DeviceConfig:   createdDC,
 		MissingPlugins: missingPlugins,
 	}, nil
+}
+
+// resolveMarketTemplateImageURL prefers the resource-center-owned cover and
+// only falls back to the publisher's original device-config image for legacy
+// download payloads.
+func resolveMarketTemplateImageURL(fullData *model.MarketTemplateFullData) *string {
+	if fullData == nil {
+		return nil
+	}
+	if coverURL := strings.TrimSpace(fullData.CoverURL); coverURL != "" {
+		return &coverURL
+	}
+	if fullData.DeviceConfig != nil {
+		if imageURL := strings.TrimSpace(fullData.DeviceConfig.ImageURL); imageURL != "" {
+			return &imageURL
+		}
+	}
+	return nil
 }
 
 // checkMissingPlugins checks which plugin dependencies are not installed locally

@@ -184,6 +184,7 @@ type MarketTemplateFullData struct {
 	VersionID          string                 `json:"version_id"`
 	Version            string                 `json:"version"`
 	Description        string                 `json:"description"`
+	CoverURL           string                 `json:"cover_url"`
 	// 设备配置（凭证协议配置）
 	DeviceConfig *DeviceConfigPayload `json:"device_config"`
 	// 模板定义（物模型 + 面板配置）
