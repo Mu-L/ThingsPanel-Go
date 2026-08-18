@@ -428,6 +428,66 @@ func (*User) GetUserListByPage(userListReq *model.UserListReq, claims *utils.Use
 	return userListRspMap, nil
 }
 
+func (*User) GetTenantStatistics(ctx context.Context, claims *utils.UserClaims) (*model.TenantStatisticsRes, error) {
+	if claims.Authority != dal.SYS_ADMIN {
+		return nil, errcode.New(errcode.CodeNoPermission)
+	}
+
+	now := time.Now()
+	todayStart := time.Date(now.Year(), now.Month(), now.Day(), 0, 0, 0, 0, now.Location())
+	tomorrowStart := todayStart.AddDate(0, 0, 1)
+	last7Start := todayStart.AddDate(0, 0, -6)
+	last30Start := todayStart.AddDate(0, 0, -29)
+
+	summary, revisit, err := dal.GetTenantStatisticsSummary(
+		ctx,
+		todayStart,
+		tomorrowStart,
+		last7Start,
+		last30Start,
+	)
+	if err != nil {
+		return nil, errcode.WithData(errcode.CodeDBError, map[string]interface{}{
+			"operation": "query_tenant_statistics_summary",
+			"error":     err.Error(),
+		})
+	}
+
+	cumulativeTotal, err := dal.GetTenantCountBefore(ctx, last30Start)
+	if err != nil {
+		return nil, errcode.WithData(errcode.CodeDBError, map[string]interface{}{
+			"operation": "query_tenant_statistics_baseline",
+			"error":     err.Error(),
+		})
+	}
+
+	dailyCounts, err := dal.GetTenantDailyNewCounts(ctx, last30Start, tomorrowStart)
+	if err != nil {
+		return nil, errcode.WithData(errcode.CodeDBError, map[string]interface{}{
+			"operation": "query_tenant_daily_growth",
+			"error":     err.Error(),
+		})
+	}
+
+	trend := make([]model.TenantDailyGrowthRes, 0, 30)
+	for day := last30Start; day.Before(tomorrowStart); day = day.AddDate(0, 0, 1) {
+		date := day.Format("2006-01-02")
+		newTotal := dailyCounts[date]
+		cumulativeTotal += newTotal
+		trend = append(trend, model.TenantDailyGrowthRes{
+			Date:            date,
+			NewTotal:        newTotal,
+			CumulativeTotal: cumulativeTotal,
+		})
+	}
+
+	return &model.TenantStatisticsRes{
+		Summary: summary,
+		Revisit: revisit,
+		Trend:   trend,
+	}, nil
+}
+
 // @description  修改用户信息
 func (*User) UpdateUser(updateUserReq *model.UpdateUserReq, claims *utils.UserClaims) error {
 	// 检查手机号是否重复

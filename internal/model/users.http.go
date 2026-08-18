@@ -32,15 +32,48 @@ type LoginRsp struct {
 
 type UserListReq struct {
 	PageReq
-	Email        *string `json:"email" form:"email" validate:"omitempty"`                       // 邮箱
-	PhoneNumber  *string `json:"phone_number" form:"phone_number" validate:"omitempty,max=50"`  // 手机号
-	Name         *string `json:"name" form:"name" validate:"omitempty,max=50"`                  // 姓名
-	Status       *string `json:"status" form:"status" validate:"omitempty,oneof=N F"`           // 用户状态 F-冻结 N-正常
-	Organization *string `json:"organization" form:"organization" validate:"omitempty,max=200"` // 组织机构名称
+	Email         *string `json:"email" form:"email" validate:"omitempty"`                                                                              // 邮箱
+	PhoneNumber   *string `json:"phone_number" form:"phone_number" validate:"omitempty,max=50"`                                                         // 手机号
+	Name          *string `json:"name" form:"name" validate:"omitempty,max=50"`                                                                         // 姓名
+	Status        *string `json:"status" form:"status" validate:"omitempty,oneof=N F"`                                                                  // 用户状态 F-冻结 N-正常
+	Organization  *string `json:"organization" form:"organization" validate:"omitempty,max=200"`                                                        // 组织机构名称
+	ActivityScope *string `json:"activity_scope" form:"activity_scope" validate:"omitempty,oneof=today last_7_days last_30_days inactive_over_30_days"` // 租户活跃范围
 	// 地址相关查询字段
 	Country  *string `json:"country" form:"country" validate:"omitempty,max=50"`   // 国家
 	Province *string `json:"province" form:"province" validate:"omitempty,max=50"` // 省份
 	City     *string `json:"city" form:"city" validate:"omitempty,max=50"`         // 城市
+}
+
+const (
+	TenantActivityScopeToday              = "today"
+	TenantActivityScopeLast7Days          = "last_7_days"
+	TenantActivityScopeLast30Days         = "last_30_days"
+	TenantActivityScopeInactiveOver30Days = "inactive_over_30_days"
+)
+
+type TenantStatisticsRes struct {
+	Summary TenantStatisticsSummaryRes `json:"summary"`
+	Revisit TenantRevisitStatisticsRes `json:"revisit"`
+	Trend   []TenantDailyGrowthRes     `json:"trend"`
+}
+
+type TenantStatisticsSummaryRes struct {
+	Total              int64 `json:"total"`
+	ActiveToday        int64 `json:"active_today"`
+	ActiveLast7Days    int64 `json:"active_last_7_days"`
+	ActiveLast30Days   int64 `json:"active_last_30_days"`
+	InactiveOver30Days int64 `json:"inactive_over_30_days"`
+}
+
+type TenantRevisitStatisticsRes struct {
+	Revisited    int64 `json:"revisited"`
+	NotRevisited int64 `json:"not_revisited"`
+}
+
+type TenantDailyGrowthRes struct {
+	Date            string `json:"date"`
+	NewTotal        int64  `json:"new_total"`
+	CumulativeTotal int64  `json:"cumulative_total"`
 }
 
 type UserSelectorReq struct {

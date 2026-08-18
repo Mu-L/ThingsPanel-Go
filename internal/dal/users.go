@@ -347,6 +347,24 @@ func GetUserListByPageWithAddress(userListReq *model.UserListReq, claims *utils.
 	if userListReq.Status != nil && *userListReq.Status != "" {
 		queryBuilder = queryBuilder.Where(q.Status.Eq(*userListReq.Status))
 	}
+	if userListReq.ActivityScope != nil && *userListReq.ActivityScope != "" && claims.Authority == SYS_ADMIN {
+		now := time.Now()
+		todayStart := time.Date(now.Year(), now.Month(), now.Day(), 0, 0, 0, 0, now.Location())
+		tomorrowStart := todayStart.AddDate(0, 0, 1)
+		last7Start := todayStart.AddDate(0, 0, -6)
+		last30Start := todayStart.AddDate(0, 0, -29)
+
+		switch *userListReq.ActivityScope {
+		case model.TenantActivityScopeToday:
+			queryBuilder = queryBuilder.Where(q.LastVisitTime.Gte(todayStart), q.LastVisitTime.Lt(tomorrowStart))
+		case model.TenantActivityScopeLast7Days:
+			queryBuilder = queryBuilder.Where(q.LastVisitTime.Gte(last7Start), q.LastVisitTime.Lt(tomorrowStart))
+		case model.TenantActivityScopeLast30Days:
+			queryBuilder = queryBuilder.Where(q.LastVisitTime.Gte(last30Start), q.LastVisitTime.Lt(tomorrowStart))
+		case model.TenantActivityScopeInactiveOver30Days:
+			queryBuilder = queryBuilder.Where(q.Where(q.LastVisitTime.Lt(last30Start)).Or(q.LastVisitTime.IsNull()))
+		}
+	}
 
 	// 新增扩展字段过滤
 	if userListReq.Organization != nil && *userListReq.Organization != "" {
@@ -398,6 +416,89 @@ func GetUserListByPageWithAddress(userListReq *model.UserListReq, claims *utils.
 	}
 
 	return count, userList, nil
+}
+
+func GetTenantStatisticsSummary(
+	ctx context.Context,
+	todayStart time.Time,
+	tomorrowStart time.Time,
+	last7Start time.Time,
+	last30Start time.Time,
+) (model.TenantStatisticsSummaryRes, model.TenantRevisitStatisticsRes, error) {
+	type summaryRow struct {
+		Total              int64 `gorm:"column:total"`
+		ActiveToday        int64 `gorm:"column:active_today"`
+		ActiveLast7Days    int64 `gorm:"column:active_last_7_days"`
+		ActiveLast30Days   int64 `gorm:"column:active_last_30_days"`
+		InactiveOver30Days int64 `gorm:"column:inactive_over_30_days"`
+		Revisited          int64 `gorm:"column:revisited"`
+		NotRevisited       int64 `gorm:"column:not_revisited"`
+	}
+
+	var row summaryRow
+	err := global.DB.WithContext(ctx).
+		Model(&model.User{}).
+		Select(`
+			COUNT(*) AS total,
+			COALESCE(SUM(CASE WHEN last_visit_time >= ? AND last_visit_time < ? THEN 1 ELSE 0 END), 0) AS active_today,
+			COALESCE(SUM(CASE WHEN last_visit_time >= ? AND last_visit_time < ? THEN 1 ELSE 0 END), 0) AS active_last_7_days,
+			COALESCE(SUM(CASE WHEN last_visit_time >= ? AND last_visit_time < ? THEN 1 ELSE 0 END), 0) AS active_last_30_days,
+			COALESCE(SUM(CASE WHEN last_visit_time < ? OR last_visit_time IS NULL THEN 1 ELSE 0 END), 0) AS inactive_over_30_days,
+			COALESCE(SUM(CASE WHEN last_visit_time IS NOT NULL THEN 1 ELSE 0 END), 0) AS revisited,
+			COALESCE(SUM(CASE WHEN last_visit_time IS NULL THEN 1 ELSE 0 END), 0) AS not_revisited
+		`,
+			todayStart, tomorrowStart,
+			last7Start, tomorrowStart,
+			last30Start, tomorrowStart,
+			last30Start,
+		).
+		Where("authority = ?", TENANT_ADMIN).
+		Scan(&row).Error
+	if err != nil {
+		return model.TenantStatisticsSummaryRes{}, model.TenantRevisitStatisticsRes{}, err
+	}
+
+	return model.TenantStatisticsSummaryRes{
+			Total:              row.Total,
+			ActiveToday:        row.ActiveToday,
+			ActiveLast7Days:    row.ActiveLast7Days,
+			ActiveLast30Days:   row.ActiveLast30Days,
+			InactiveOver30Days: row.InactiveOver30Days,
+		}, model.TenantRevisitStatisticsRes{
+			Revisited:    row.Revisited,
+			NotRevisited: row.NotRevisited,
+		}, nil
+}
+
+func GetTenantCountBefore(ctx context.Context, before time.Time) (int64, error) {
+	return query.User.WithContext(ctx).
+		Where(query.User.Authority.Eq(TENANT_ADMIN), query.User.CreatedAt.Lt(before)).
+		Count()
+}
+
+func GetTenantDailyNewCounts(ctx context.Context, start time.Time, end time.Time) (map[string]int64, error) {
+	type dailyNewCountRow struct {
+		Date  string `gorm:"column:date"`
+		Total int64  `gorm:"column:total"`
+	}
+
+	var rows []dailyNewCountRow
+	err := global.DB.WithContext(ctx).
+		Model(&model.User{}).
+		Select("TO_CHAR(created_at, 'YYYY-MM-DD') AS date, COUNT(*) AS total").
+		Where("authority = ? AND created_at >= ? AND created_at < ?", TENANT_ADMIN, start, end).
+		Group("TO_CHAR(created_at, 'YYYY-MM-DD')").
+		Order("date ASC").
+		Scan(&rows).Error
+	if err != nil {
+		return nil, err
+	}
+
+	result := make(map[string]int64, len(rows))
+	for _, row := range rows {
+		result[row.Date] = row.Total
+	}
+	return result, nil
 }
 
 func GetUsersCount() int64 {

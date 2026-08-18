@@ -20,6 +20,7 @@ func (*User) InitUser(Router *gin.RouterGroup) {
 
 		// 用户管理
 		userapi.GET("", api.Controllers.UserApi.HandleUserListByPage)
+		userapi.GET("tenant/statistics", api.Controllers.UserApi.HandleTenantStatistics)
 		userapi.POST("", api.Controllers.UserApi.CreateUser)
 		userapi.PUT("", api.Controllers.UserApi.UpdateUser)
 		userapi.DELETE(":id", api.Controllers.UserApi.DeleteUser)

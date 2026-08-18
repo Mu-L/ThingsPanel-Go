@@ -155,6 +155,20 @@ func (*UserApi) HandleUserListByPage(c *gin.Context) {
 	c.Set("data", userList)
 }
 
+// HandleTenantStatistics 获取租户数据概览
+// @Router /api/v1/user/tenant/statistics [get]
+func (*UserApi) HandleTenantStatistics(c *gin.Context) {
+	userClaims := c.MustGet("claims").(*utils.UserClaims)
+
+	statistics, err := service.GroupApp.User.GetTenantStatistics(c.Request.Context(), userClaims)
+	if err != nil {
+		c.Error(err)
+		return
+	}
+
+	c.Set("data", statistics)
+}
+
 // UpdateUser 修改用户信息
 // @Router   /api/v1/user [put]
 func (*UserApi) UpdateUser(c *gin.Context) {
